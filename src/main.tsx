@@ -34,7 +34,11 @@ if (isTauri) {
 
 // 客户端不注册 Service Worker，避免缓存与客户端版本更新冲突
 if (!isTauri && 'serviceWorker' in navigator) {
-  if (import.meta.env.PROD) {
+  if (import.meta.env.VITE_WEB_AUTH_REQUIRED === '1') {
+    navigator.serviceWorker.getRegistration('/').then((registration) => registration?.update()).catch((err) => {
+      console.warn('更新离线缓存失败：', err)
+    })
+  } else if (import.meta.env.PROD) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch((error) => {
         console.error('Service worker registration failed:', error)
@@ -53,7 +57,9 @@ async function start() {
     await loadTauriStorage()
     void installTauriStorageFlush().catch((err) => console.error('注册关闭前保存失败：', err))
   }
-  const { default: App } = await import('./App')
+  const { default: App } = !isTauri && import.meta.env.VITE_WEB_AUTH_REQUIRED === '1'
+    ? await import('./components/WebSessionGate')
+    : await import('./App')
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <App />

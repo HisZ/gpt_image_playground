@@ -195,7 +195,17 @@ npm run tauri:build
 
 **环境变量（可选）**
 
-在 Vercel 项目的 **「Settings → Environment Variables」** 中添加（变量见 [环境变量](#env-vars)），添加或修改后需要重新部署。
+在 Vercel 项目的 **「Settings → Environment Variables」** 中配置一组网页登录账号。需要预览部署时，也为 Preview 环境配置这些变量。
+
+| 变量 | 用途 |
+| --- | --- |
+| `WEB_AUTH_USERNAME` | 登录账号 |
+| `WEB_AUTH_PASSWORD` | 登录密码，使用密码管理器生成的随机密码 |
+| `WEB_AUTH_SESSION_SECRET` | 会话签名密钥，运行 `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"` 生成 |
+
+保存后重新部署。缺少任一配置时，站点暂停访问。登录有效期为 8 小时，更换账号、密码或密钥并重新部署后，已有会话失效。若此前公开过 Demo，在 Vercel 启用 Deployment Protection 或移除仍可公开访问的旧部署。
+
+在项目的 **「Firewall」** 中发布一条限流规则，匹配 `POST /login`，按 IP 每分钟限制 10 次，超出返回 `429`。其他配置见 [环境变量](#env-vars)。
 
 **绑定自定义域名（国内直连）**
 

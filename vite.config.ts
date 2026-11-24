@@ -52,7 +52,7 @@ export default defineConfig(async ({ command, mode }) => {
 
   return {
     plugins: [react()],
-    base: './',
+    base: process.env.VITE_WEB_AUTH_REQUIRED === '1' ? '/' : './',
     envDir,
     define: {
       __APP_VERSION__: JSON.stringify(pkg.version),

@@ -21,6 +21,7 @@ type BeforeInstallPromptEvent = Event & {
 // 客户端目前只有 Windows 版，只向网页版的 Windows 用户显示下载入口
 const SHOW_CLIENT_DOWNLOAD = !isTauri
   && detectOs(navigator.userAgent, (navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform, navigator.maxTouchPoints) === 'windows'
+const WEB_AUTH_REQUIRED = !isTauri && import.meta.env.VITE_WEB_AUTH_REQUIRED === '1'
 
 function isInstalledPwa() {
   const nav = window.navigator as Navigator & { standalone?: boolean }
@@ -281,7 +282,7 @@ export default function Header() {
           </div>
           <div className="flex items-center gap-1 shrink-0">
             {/* 客户端本身就是安装版，不显示 PWA 安装入口 */}
-            {!isTauri && !isPwaInstalled && (
+            {!isTauri && !WEB_AUTH_REQUIRED && !isPwaInstalled && (
               <div
                 className="relative"
                 {...installTooltip.handlers}
@@ -355,6 +356,13 @@ export default function Header() {
                 设置
               </ViewportTooltip>
             </div>
+            {WEB_AUTH_REQUIRED && (
+              <form method="post" action="/logout">
+                <button type="submit" className="whitespace-nowrap rounded-lg px-2 py-2 text-xs text-gray-600 transition-colors hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-900 sm:text-sm">
+                  退出登录
+                </button>
+              </form>
+            )}
           </div>
         </div>
         {/* 这一行的高度与 index.css 的 --header-row2-height、下方占位块的第二行一致，改动尺寸时需同步 */}

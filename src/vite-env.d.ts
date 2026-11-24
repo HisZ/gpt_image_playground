@@ -18,6 +18,7 @@ interface ImportMetaEnv {
   readonly VITE_DEFAULT_MONO_FONT?: string
   readonly VITE_BUILTIN_FONT_SOURCE?: string
   readonly VITE_WEB_APP_URL?: string
+  readonly VITE_WEB_AUTH_REQUIRED?: string
 }
 
 interface ImportMeta {
