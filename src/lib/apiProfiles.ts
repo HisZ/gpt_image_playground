@@ -19,7 +19,7 @@ import type {
 } from '../types'
 import { DEFAULT_AGENT_MAX_TOOL_ROUNDS, DEFAULT_STREAM_PARTIAL_IMAGES, DEFAULT_ZIP_DOWNLOAD_ROUTES, ZIP_DOWNLOAD_ROUTE_VALUES } from '../types'
 import { customProviderSupportsNativeTransparentBackground } from './customProviderCapabilities'
-import { shouldUseApiProxy } from './devProxy'
+import { shouldUseApiProxy, usesWebDefaultApi, WEB_DEFAULT_API_ENABLED, WEB_DEFAULT_API_URL } from './devProxy'
 import { normalizeReasoningEffort, normalizeStreamPartialImages, parseDefaultApiUrl } from './defaultApiUrl'
 import { readRuntimeEnv } from './runtimeEnv'
 import { isTauri } from './platform'
@@ -35,7 +35,7 @@ const DEFAULT_OPENAI_API_PROXY = readRuntimeEnv(import.meta.env.VITE_API_PROXY_A
 const DOCKER_DEPLOYMENT = readRuntimeEnv(import.meta.env.VITE_DOCKER_DEPLOYMENT) === 'true'
 const DEFAULT_API_URL_PATCH = isImportableConfigUrl(RAW_DEFAULT_API_URL)
   ? null
-  : parseDefaultApiUrl(RAW_DEFAULT_API_URL || (DOCKER_DEPLOYMENT && DEFAULT_OPENAI_API_PROXY ? '' : OPENAI_DEFAULT_BASE_URL))
+  : parseDefaultApiUrl(RAW_DEFAULT_API_URL || (WEB_DEFAULT_API_ENABLED ? WEB_DEFAULT_API_URL : DOCKER_DEPLOYMENT && DEFAULT_OPENAI_API_PROXY ? '' : OPENAI_DEFAULT_BASE_URL))
 const DEFAULT_BASE_URL = DEFAULT_API_URL_PATCH?.baseUrl ?? ''
 export { DEFAULT_IMAGES_MODEL } from './imageModels'
 export const DEFAULT_RESPONSES_MODEL = 'gpt-6.1-sol'
@@ -1063,16 +1063,16 @@ export function getApiProfileModelGroups(
 export function validateApiProfile(profile: ApiProfile): string | null {
   if (!profile.name.trim()) return '缺少名称'
   if (profile.provider !== 'fal' && !profile.baseUrl.trim() && !shouldUseApiProxy(profile.apiProxy)) return '缺少 API URL'
-  if (!profile.apiKey.trim()) return '缺少 API Key'
+  if (!profile.apiKey.trim() && !usesWebDefaultApi(profile)) return '缺少 API Key'
   if (!profile.model.trim()) return '缺少模型 ID'
   return null
 }
 
-function isDefaultOpenAIProfile(profile: ApiProfile): boolean {
+function isDefaultOpenAIProfile(profile: ApiProfile, baseUrl = DEFAULT_BASE_URL): boolean {
   return profile.id === DEFAULT_OPENAI_PROFILE_ID &&
     profile.name === '默认' &&
     profile.provider === 'openai' &&
-    profile.baseUrl === DEFAULT_BASE_URL &&
+    profile.baseUrl === baseUrl &&
     profile.apiKey === '' &&
     profile.model === DEFAULT_IMAGES_MODEL &&
     profile.imageGenerationModel === DEFAULT_IMAGES_MODEL &&
@@ -1084,6 +1084,16 @@ function isDefaultOpenAIProfile(profile: ApiProfile): boolean {
     profile.streamImages === false &&
     profile.streamPartialImages === DEFAULT_STREAM_PARTIAL_IMAGES &&
     profile.transparentBackgroundMethod === 'api'
+}
+
+export function migrateWebDefaultApiSettings(input: unknown): unknown {
+  if (!WEB_DEFAULT_API_ENABLED || DEFAULT_BASE_URL !== WEB_DEFAULT_API_URL || !isRecord(input)) return input
+  const settings = normalizeSettings(input)
+  if (!settings.profiles.some((profile) => isDefaultOpenAIProfile(profile, OPENAI_DEFAULT_BASE_URL))) return input
+  const profiles = settings.profiles.map((profile) => isDefaultOpenAIProfile(profile, OPENAI_DEFAULT_BASE_URL)
+    ? { ...profile, baseUrl: WEB_DEFAULT_API_URL }
+    : profile)
+  return normalizeSettings({ ...settings, profiles })
 }
 
 function hasOnlyDefaultProfiles(settings: AppSettings): boolean {

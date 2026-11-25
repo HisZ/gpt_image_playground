@@ -1,5 +1,5 @@
 import { GIF_FRAME_COUNT_RANGE, GIF_FRAME_DURATION_RANGE, IMAGE_COMPLEXITIES, OUTPUT_FORMATS, type AgentConversation, type AgentInputDraft, type AppMode, type AppSettings, type FavoriteCollection, type InputImage, type MaskDraft, type PresetConfig, type TaskParams } from '../types'
-import { normalizePresetAgent, normalizeSettings } from './apiProfiles'
+import { migrateWebDefaultApiSettings, normalizePresetAgent, normalizeSettings } from './apiProfiles'
 import { normalizeAgentConversations } from './agentConversationState'
 import { ensureDefaultFavoriteCollection, normalizeFavoriteCollections, resolveDefaultFavoriteCollectionId } from './favoriteState'
 import { cleanStaleAgentInputDrafts, getPersistableAgentInputDrafts, isEmptyAgentInputDraft, normalizeAgentInputDraft, normalizeAgentInputDrafts, normalizeAgentInputDraftsByKey, saveGalleryInputDraft } from './inputDraftState'
@@ -146,11 +146,12 @@ export function createPersistedState(state: PersistedStateSource, includeLegacyA
   }
 }
 
-export function migratePersistedState(persistedState: unknown, _version?: number): unknown {
+export function migratePersistedState(persistedState: unknown, version = 0): unknown {
   if (!isRecord(persistedState)) return persistedState
   return {
     ...persistedState,
-    agentConversations: stripPersistedAgentConversations(persistedState.agentConversations),
+    ...(version < 2 ? { agentConversations: stripPersistedAgentConversations(persistedState.agentConversations) } : {}),
+    settings: migrateWebDefaultApiSettings(persistedState.settings),
   }
 }
 

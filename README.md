@@ -202,10 +202,13 @@ npm run tauri:build
 | `WEB_AUTH_USERNAME` | 登录账号 |
 | `WEB_AUTH_PASSWORD` | 登录密码，使用密码管理器生成的随机密码 |
 | `WEB_AUTH_SESSION_SECRET` | 会话签名密钥，运行 `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"` 生成 |
+| `WEB_DEFAULT_API_KEY` | 默认 API 的服务端密钥，供登录后使用 |
 
 保存后重新部署。缺少任一配置时，站点暂停访问。登录有效期为 8 小时，更换账号、密码或密钥并重新部署后，已有会话失效。若此前公开过 Demo，在 Vercel 启用 Deployment Protection 或移除仍可公开访问的旧部署。
 
 在项目的 **「Firewall」** 中发布一条限流规则，匹配 `POST /login`，按 IP 每分钟限制 10 次，超出返回 `429`。其他配置见 [环境变量](#env-vars)。
+
+Vercel 网页版默认 API URL 为 `https://www.cctq.ai/v1`。使用此地址且 API Key 留空时，登录后由 Vercel 转发请求并附加默认密钥。用户可以填写自己的 API Key 或修改 API URL。
 
 **绑定自定义域名（国内直连）**
 

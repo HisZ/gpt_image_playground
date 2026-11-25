@@ -1,6 +1,7 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 import { next, rewrite } from '@vercel/functions/middleware'
 import { loginPage } from './deploy/loginPage.js'
+import { proxyDefaultProvider } from './deploy/defaultProvider.js'
 
 export const config = { runtime: 'nodejs' }
 
@@ -118,6 +119,10 @@ export default async function middleware(request) {
       return redirect(`/login?${new URLSearchParams({ next: path + url.search })}`)
     }
     return respond(401)
+  }
+
+  if (path.startsWith('/api/default-provider/')) {
+    return proxyDefaultProvider(request, url, headers)
   }
 
   if (documentRequest && appPage && path !== '/') {

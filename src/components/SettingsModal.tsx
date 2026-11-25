@@ -6,7 +6,7 @@ import { normalizeBaseUrl } from '../lib/api'
 import { customProviderSupportsNativeTransparentBackground } from '../lib/customProviderCapabilities'
 import { hasActiveDataOperations, trackDataTransfer } from '../lib/dataOperations'
 import { useSettingsDataTransfer } from '../lib/dataProgress'
-import { isApiProxyAvailable, isApiProxyLocked, readClientDevProxyConfig } from '../lib/devProxy'
+import { isApiProxyAvailable, isApiProxyLocked, readClientDevProxyConfig, usesWebDefaultApi } from '../lib/devProxy'
 import { DEFAULT_SVG_MODEL, getEffectiveImageGenerationModel, getImageModelFamily, isGptImage26PlusModel } from '../lib/imageModels'
 import { isTauri } from '../lib/platform'
 import { useStore, exportData, importData, clearData, type SettingsTab } from '../store'
@@ -320,7 +320,7 @@ export default function SettingsModal() {
 
   const agentProfiles = (presetConfigOnly ? visibleProfiles : draft.profiles)
     .filter((profile) => {
-      if (!profile.apiKey.trim()) return false
+      if (!profile.apiKey.trim() && !usesWebDefaultApi(profile)) return false
       if (profile.baseUrl.trim() || profile.provider === 'fal') return true
       return apiProxyAvailable && isProfileApiProxyEligible(draft, profile) && (apiProxyLocked || profile.apiProxy)
     })
@@ -1530,7 +1530,7 @@ export default function SettingsModal() {
                     onChange={(e) => updateActiveProfile({ apiKey: e.target.value })}
                     onBlur={(e) => commitActiveProfilePatch({ apiKey: e.target.value })}
                     type={showApiKey ? 'text' : 'password'}
-                    placeholder={activeProfile.provider === 'google' ? 'AIza...' : activeProfile.provider === 'xai' ? 'xai-...' : activeProfile.provider === 'fal' ? 'FAL_KEY' : 'sk-...'}
+                    placeholder={usesWebDefaultApi(activeProfile) ? '使用站点默认 API Key' : activeProfile.provider === 'google' ? 'AIza...' : activeProfile.provider === 'xai' ? 'xai-...' : activeProfile.provider === 'fal' ? 'FAL_KEY' : 'sk-...'}
                     className="w-full rounded-xl border border-transparent bg-black/[0.04] px-3 py-2.5 pr-10 text-sm text-gray-700 outline-none transition focus:border-blue-300 dark:bg-white/[0.06] dark:text-gray-200 dark:focus:border-blue-500/50"
                   />
                   <button
@@ -1555,7 +1555,7 @@ export default function SettingsModal() {
                   </button>
                 </div>
                 <div data-selectable-text className="mt-1.5 text-xs leading-6 text-gray-500 dark:text-gray-500">
-                  支持通过链接参数导入：<code className="bg-gray-100 dark:bg-white/[0.06] px-1 py-0.5 rounded">?apiKey=</code>
+                  {usesWebDefaultApi(activeProfile) ? '填写自己的 API Key 后将使用你的凭据。' : <>支持通过链接参数导入：<code className="bg-gray-100 dark:bg-white/[0.06] px-1 py-0.5 rounded">?apiKey=</code></>}
                 </div>
               </div>
 

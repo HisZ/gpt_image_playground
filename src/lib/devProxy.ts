@@ -1,3 +1,4 @@
+import type { ApiProfile } from '../types'
 import { isTauri } from './platform'
 import { readRuntimeEnv } from './runtimeEnv'
 
@@ -10,6 +11,8 @@ export interface DevProxyConfig {
 }
 
 const DEFAULT_PROXY_PREFIX = '/api-proxy'
+export const WEB_DEFAULT_API_URL = 'https://www.cctq.ai/v1'
+export const WEB_DEFAULT_API_ENABLED = !isTauri && import.meta.env?.VITE_WEB_AUTH_REQUIRED === '1'
 
 export function normalizeBaseUrl(baseUrl: string, apiVersion = 'v1'): string {
   const trimmed = baseUrl.trim()
@@ -81,6 +84,25 @@ export function buildApiUrl(
     : [apiVersion, endpointPath].join('/')
 
   return normalizedBaseUrl ? `${normalizedBaseUrl}/${apiPath}` : `/${apiPath}`
+}
+
+export function usesWebDefaultApi(profile: ApiProfile): boolean {
+  return WEB_DEFAULT_API_ENABLED
+    && profile.provider === 'openai'
+    && !profile.apiProxy
+    && !profile.apiKey.trim()
+    && /^https:\/\/www\.cctq\.ai\/v1\/?$/i.test(profile.baseUrl.trim())
+}
+
+export function buildProfileApiUrl(
+  profile: ApiProfile,
+  path: string,
+  proxyConfig?: DevProxyConfig | null,
+  useApiProxy = false,
+  apiVersion = 'v1',
+): string {
+  if (!useApiProxy && usesWebDefaultApi(profile)) return `/api/default-provider/${path}`
+  return buildApiUrl(profile.baseUrl, path, proxyConfig, useApiProxy, apiVersion)
 }
 
 export function resolveDevProxyConfig(input: unknown, isDev: boolean): DevProxyConfig | null {

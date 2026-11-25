@@ -2,7 +2,7 @@ import { createSettingsForApiProfile, shouldReturnBase64 } from './apiProfiles'
 import { DEFAULT_STREAM_PARTIAL_IMAGES, type ApiProfile, type CustomProviderDefinition, type CustomProviderPollMapping, type CustomProviderResultMapping, type CustomProviderSubmitMapping, type ImageApiResponse, type ImageResponseItem, type ResponsesApiResponse, type ResponsesOutputItem, type TaskParams } from '../types'
 import { assertInputImageLimit } from './inputImageLimits'
 import { dataUrlToBlob, imageDataUrlToPngBlob, maskDataUrlToPngBlob } from './canvasImage'
-import { buildApiUrl, readClientDevProxyConfig, shouldUseApiProxy } from './devProxy'
+import { buildApiUrl, buildProfileApiUrl, readClientDevProxyConfig, shouldUseApiProxy } from './devProxy'
 import {
   applyGptImage26Params,
   assertImageInputPayloadSize,
@@ -515,7 +515,7 @@ async function callModelImagesApi(opts: CallApiOptions, profile: ApiProfile): Pr
   opts.signal?.addEventListener('abort', abortFromCaller, { once: true })
   const timeoutId = setTimeout(() => controller.abort(createRequestTimeoutError(profile.timeout)), profile.timeout * 1000)
   try {
-    const response = await apiFetch(buildApiUrl(profile.baseUrl, family === 'grok' && !grokSizeParams && isEdit ? 'images/edits' : 'images/generations', proxyConfig, profile.provider === 'openai' && shouldUseApiProxy(profile.apiProxy, proxyConfig), profile.provider === 'bytedance' ? 'v3' : 'v1'), {
+    const response = await apiFetch(buildProfileApiUrl(profile, family === 'grok' && !grokSizeParams && isEdit ? 'images/edits' : 'images/generations', proxyConfig, profile.provider === 'openai' && shouldUseApiProxy(profile.apiProxy, proxyConfig), profile.provider === 'bytedance' ? 'v3' : 'v1'), {
       method: 'POST',
       headers: { ...createRequestHeaders(profile), 'Content-Type': 'application/json' },
       cache: 'no-store',
@@ -634,7 +634,7 @@ async function callImagesApiSingle(opts: CallApiOptions, profile: ApiProfile): P
         formData.append('markup', markupBlob, 'markup.png')
       }
 
-      response = await apiFetch(buildApiUrl(profile.baseUrl, paths.editPath, proxyConfig, useApiProxy), {
+      response = await apiFetch(buildProfileApiUrl(profile, paths.editPath, proxyConfig, useApiProxy), {
         method: 'POST',
         headers: requestHeaders,
         cache: 'no-store',
@@ -673,7 +673,7 @@ async function callImagesApiSingle(opts: CallApiOptions, profile: ApiProfile): P
         body.partial_images = getStreamPartialImages(profile)
       }
 
-      response = await apiFetch(buildApiUrl(profile.baseUrl, paths.generationPath, proxyConfig, useApiProxy), {
+      response = await apiFetch(buildProfileApiUrl(profile, paths.generationPath, proxyConfig, useApiProxy), {
         method: 'POST',
         headers: {
           ...requestHeaders,
@@ -1109,7 +1109,7 @@ async function callResponsesImageApiSingle(opts: CallApiOptions, profile: ApiPro
       body.stream = true
     }
 
-    const response = await apiFetch(buildApiUrl(profile.baseUrl, 'responses', proxyConfig, useApiProxy), {
+    const response = await apiFetch(buildProfileApiUrl(profile, 'responses', proxyConfig, useApiProxy), {
       method: 'POST',
       headers: {
         ...requestHeaders,

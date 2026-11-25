@@ -24,6 +24,7 @@ describe('Vercel 网页登录', () => {
 
   afterEach(() => {
     vi.unstubAllEnvs()
+    vi.unstubAllGlobals()
     vi.restoreAllMocks()
   })
 
@@ -84,5 +85,32 @@ describe('Vercel 网页登录', () => {
     expect(worker.status).toBe(200)
     expect(worker.headers.get('cache-control')).toContain('no-store')
     expect(await worker.text()).toContain('self.registration.unregister()')
+  })
+
+  it('只为有效会话转发默认供应商请求，并在服务端附加密钥', async () => {
+    vi.stubEnv('WEB_DEFAULT_API_KEY', 'server-test-key')
+    const fetch = vi.fn().mockResolvedValue(new Response('data: {}\n\n', {
+      headers: { 'Content-Type': 'text/event-stream', 'Set-Cookie': 'upstream=hidden' },
+    }))
+    vi.stubGlobal('fetch', fetch)
+    const path = '/api/default-provider/responses'
+    const options = { method: 'POST', headers: { origin: ORIGIN, 'content-type': 'application/json' }, body: '{"stream":true}' }
+    expect((await request(path, options)).status).toBe(401)
+    const cookie = (await login()).headers.get('set-cookie').split(';')[0]
+    const authenticated = { ...options, headers: { ...options.headers, cookie, authorization: 'Bearer client-header' } }
+    expect((await request(path, { ...authenticated, headers: { ...authenticated.headers, origin: 'https://external.example' } })).status).toBe(403)
+    expect((await request('/api/default-provider/models', authenticated)).status).toBe(404)
+    expect(fetch).not.toHaveBeenCalled()
+
+    const response = await request(path + '?target=ignored', authenticated)
+    expect(response.status).toBe(200)
+    expect(response.headers.get('content-type')).toBe('text/event-stream')
+    expect(response.headers.has('set-cookie')).toBe(false)
+    expect(await response.text()).toBe('data: {}\n\n')
+    expect(fetch).toHaveBeenCalledWith('https://www.cctq.ai/v1/responses', expect.objectContaining({
+      method: 'POST',
+      headers: { Authorization: 'Bearer server-test-key', 'Content-Type': 'application/json' },
+      redirect: 'error',
+    }))
   })
 })
