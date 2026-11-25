@@ -25,6 +25,7 @@ import type {
 } from './types'
 import { DEFAULT_AGENT_MAX_TOOL_ROUNDS, DEFAULT_PARAMS } from './types'
 import { DEFAULT_SETTINGS, createSettingsForApiProfile, getActiveApiProfile, getAgentImageApiProfile, getAgentTextApiProfile, getCustomProviderDefinition, mergeImportedSettings, mergePresetImportedSettings, normalizeSettings, resolveApiProfileModel, splitModelList, validateApiProfile } from './lib/apiProfiles'
+import { WEB_DEFAULT_API_ENABLED } from './lib/devProxy'
 import { enforcePresetConfigPolicy, getPresetConfig, getPresetProfileIds, getPresetProviderIds, isPresetConfigDeletionPrevented, isPresetConfigOnlyEnabled, isPresetConfigParamsLocked, isPresetProfile, isPresetProviderDeletionPrevented } from './lib/presetConfig'
 import { dismissAllTooltips } from './lib/tooltipDismiss'
 import { getTaskPromptText, remapImageMentionsForOrder, replaceImageMentionsForApi, stripImageMentionMarkers } from './lib/promptImageMentions'
@@ -1179,7 +1180,7 @@ export const useStore = create<AppState>()(
       name: 'gpt-image-playground',
       // 与 zustand 默认存储（window.localStorage）一致；客户端改用预加载到内存的 SQLite kv
       storage: createJSONStorage(() => isTauri ? tauriStorage : window.localStorage),
-      version: 3,
+      version: WEB_DEFAULT_API_ENABLED ? 3 : 2,
       migrate: migratePersistedState,
       partialize: getPersistedState,
       merge: mergePersistedState,
