@@ -37,6 +37,9 @@ const DEFAULT_API_URL_PATCH = isImportableConfigUrl(RAW_DEFAULT_API_URL)
   ? null
   : parseDefaultApiUrl(RAW_DEFAULT_API_URL || (WEB_DEFAULT_API_ENABLED ? WEB_DEFAULT_API_URL : DOCKER_DEPLOYMENT && DEFAULT_OPENAI_API_PROXY ? '' : OPENAI_DEFAULT_BASE_URL))
 const DEFAULT_BASE_URL = DEFAULT_API_URL_PATCH?.baseUrl ?? ''
+const DEFAULT_IMAGE_MODELS = WEB_DEFAULT_API_ENABLED && DEFAULT_BASE_URL === WEB_DEFAULT_API_URL
+  ? 'gpt-image-2.5-sunburst, gpt-image-2, gpt-image-2.5-flare'
+  : DEFAULT_IMAGES_MODEL
 export { DEFAULT_IMAGES_MODEL } from './imageModels'
 export const DEFAULT_RESPONSES_MODEL = 'gpt-6.1-sol'
 export const DEFAULT_FAL_BASE_URL = 'https://fal.run'
@@ -414,7 +417,7 @@ export function createDefaultOpenAIProfile(overrides: Partial<ApiProfile> = {}):
     provider: 'openai',
     baseUrl: DEFAULT_BASE_URL,
     apiKey: DEFAULT_API_URL_PATCH?.apiKey ?? '',
-    model: DEFAULT_API_URL_PATCH?.model ?? (apiMode === 'responses' ? DEFAULT_RESPONSES_MODEL : DEFAULT_IMAGES_MODEL),
+    model: DEFAULT_API_URL_PATCH?.model ?? (apiMode === 'responses' ? DEFAULT_RESPONSES_MODEL : DEFAULT_IMAGE_MODELS),
     imageGenerationModel: DEFAULT_API_URL_PATCH?.imageGenerationModel ?? DEFAULT_IMAGES_MODEL,
     timeout: DEFAULT_API_URL_PATCH?.timeout ?? DEFAULT_API_TIMEOUT,
     svgModel: DEFAULT_API_URL_PATCH?.svgModel,
@@ -1068,13 +1071,13 @@ export function validateApiProfile(profile: ApiProfile): string | null {
   return null
 }
 
-function isDefaultOpenAIProfile(profile: ApiProfile, baseUrl = DEFAULT_BASE_URL): boolean {
+function isDefaultOpenAIProfile(profile: ApiProfile, baseUrl = DEFAULT_BASE_URL, models = DEFAULT_IMAGE_MODELS): boolean {
   return profile.id === DEFAULT_OPENAI_PROFILE_ID &&
     profile.name === '默认' &&
     profile.provider === 'openai' &&
     profile.baseUrl === baseUrl &&
     profile.apiKey === '' &&
-    profile.model === DEFAULT_IMAGES_MODEL &&
+    profile.model === models &&
     profile.imageGenerationModel === DEFAULT_IMAGES_MODEL &&
     profile.timeout === DEFAULT_API_TIMEOUT &&
     profile.apiMode === 'images' &&
@@ -1089,9 +1092,11 @@ function isDefaultOpenAIProfile(profile: ApiProfile, baseUrl = DEFAULT_BASE_URL)
 export function migrateWebDefaultApiSettings(input: unknown): unknown {
   if (!WEB_DEFAULT_API_ENABLED || DEFAULT_BASE_URL !== WEB_DEFAULT_API_URL || !isRecord(input)) return input
   const settings = normalizeSettings(input)
-  if (!settings.profiles.some((profile) => isDefaultOpenAIProfile(profile, OPENAI_DEFAULT_BASE_URL))) return input
-  const profiles = settings.profiles.map((profile) => isDefaultOpenAIProfile(profile, OPENAI_DEFAULT_BASE_URL)
-    ? { ...profile, baseUrl: WEB_DEFAULT_API_URL }
+  const needsDefaults = (profile: ApiProfile) => isDefaultOpenAIProfile(profile, OPENAI_DEFAULT_BASE_URL, DEFAULT_IMAGES_MODEL)
+    || isDefaultOpenAIProfile(profile, WEB_DEFAULT_API_URL, DEFAULT_IMAGES_MODEL)
+  if (!settings.profiles.some(needsDefaults)) return input
+  const profiles = settings.profiles.map((profile) => needsDefaults(profile)
+    ? { ...profile, baseUrl: WEB_DEFAULT_API_URL, model: DEFAULT_IMAGE_MODELS }
     : profile)
   return normalizeSettings({ ...settings, profiles })
 }

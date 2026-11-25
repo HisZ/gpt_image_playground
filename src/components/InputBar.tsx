@@ -4,7 +4,7 @@ import { deleteFavoriteCollection, useStore, submitTask, submitAgentMessage, sto
 import { DEFAULT_PARAMS, type TaskRecord } from '../types'
 import { getInputImageLimit, getInputImageProfile } from '../lib/inputImageLimits'
 import { getActiveAgentRounds } from '../lib/agentConversationState'
-import { createSettingsForApiProfile, getCustomProviderDefinition, getActiveApiProfile, getAgentImageApiProfile, getApiProfileModelGroups } from '../lib/apiProfiles'
+import { createSettingsForApiProfile, getCustomProviderDefinition, getActiveApiProfile, getAgentImageApiProfile, getApiProfileModelGroups, validateApiProfile } from '../lib/apiProfiles'
 import { getImageModelFamily } from '../lib/imageModels'
 import { getImageSearchSupport, getImageThinkingSupport } from '../lib/imageSearch'
 import { ensureImageCached, getCachedImage } from '../lib/imageCache'
@@ -481,7 +481,7 @@ export default function InputBar() {
     : null
   const activeAgentIsRunning = Boolean(activeAgentConversation?.rounds.some((round) => round.status === 'running'))
   const effectiveSettings = useMemo(() => createSettingsForApiProfile(settings, activeProfile), [settings, activeProfile])
-  const hasSubmitApiConfig = Boolean(activeProfile.apiKey)
+  const hasSubmitApiConfig = validateApiProfile(activeProfile) === null
   // 批量进行中暂停画廊和 Agent 的提交，需等待完成或停止后再提交
   const batchRunning = Boolean(batchProgress)
   const maskDisabledReason = maskDraft ? getMaskDisabledReason(activeProfile, params.output_format) : undefined

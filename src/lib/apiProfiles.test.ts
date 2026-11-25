@@ -42,20 +42,25 @@ describe('validateApiProfile', () => {
   it('uses the Vercel default credential only for the default endpoint without a personal key', async () => {
     vi.resetModules()
     vi.stubEnv('VITE_WEB_AUTH_REQUIRED', '1')
-    const { createDefaultOpenAIProfile, migrateWebDefaultApiSettings, normalizeSettings, validateApiProfile } = await import('./apiProfiles')
+    const { createDefaultOpenAIProfile, getActiveApiProfile, migrateWebDefaultApiSettings, normalizeSettings, validateApiProfile } = await import('./apiProfiles')
     const { buildProfileApiUrl } = await import('./devProxy')
     const profile = createDefaultOpenAIProfile()
-    const previous = { ...profile, baseUrl: 'https://api.openai.com/v1' }
+    const previous = { ...profile, baseUrl: 'https://api.openai.com/v1', model: DEFAULT_IMAGES_MODEL }
     const personal = { ...previous, apiKey: 'personal' }
 
     expect(profile.baseUrl).toBe('https://www.cctq.ai/v1')
     expect(profile.apiKey).toBe('')
+    expect(profile.model).toBe('gpt-image-2.5-sunburst, gpt-image-2, gpt-image-2.5-flare')
+    expect(getActiveApiProfile({ profiles: [profile] }).model).toBe('gpt-image-2.5-sunburst')
     expect(validateApiProfile(profile)).toBeNull()
     expect(buildProfileApiUrl(profile, 'images/generations')).toBe('/api/default-provider/images/generations')
     expect(buildProfileApiUrl({ ...profile, apiKey: 'personal' }, 'responses')).toBe('https://www.cctq.ai/v1/responses')
     expect(buildProfileApiUrl(personal, 'responses')).toBe('https://api.openai.com/v1/responses')
     expect(validateApiProfile(previous)).toBe('缺少 API Key')
     expect(normalizeSettings(migrateWebDefaultApiSettings({ profiles: [previous] })).baseUrl).toBe(profile.baseUrl)
+    expect(normalizeSettings(migrateWebDefaultApiSettings({ profiles: [{ ...previous, baseUrl: profile.baseUrl }] })).profiles[0].model).toBe(profile.model)
+    const custom = { ...profile, model: 'custom-image-model' }
+    expect(normalizeSettings(migrateWebDefaultApiSettings({ profiles: [custom] })).profiles[0]).toMatchObject(custom)
     expect(normalizeSettings(migrateWebDefaultApiSettings({ profiles: [personal] })).profiles[0]).toMatchObject(personal)
     expect(normalizeSettings({ profiles: [previous] }).baseUrl).toBe(previous.baseUrl)
   })
